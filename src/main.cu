@@ -6,12 +6,16 @@
 
 #include <fenv.h>
 
+
+__global__
 void copy(double *rhoOut, double *momUOut, double *momVOut, double *EOut,
           double *rhoIn, double *momUIn, double *momVIn, double *EIn,
           int nCells)
 {
-    #pragma omp parallel for
-    for (int n=0; n<nCells; n++) {
+    int index = threadIdx.x;
+    int stride = blockDim.x;
+
+    for (int n=index; n<nCells; n += stride) {
         rhoOut[n] = rhoIn[n];
         EOut[n] = EIn[n];
         momUOut[n] = momUIn[n];
@@ -20,13 +24,16 @@ void copy(double *rhoOut, double *momUOut, double *momVOut, double *EOut,
 }
 
 
+__global__
 void evolve(double *rhoIn, double *momUIn, double *momVIn, double *EIn,
           double *rhoOut, double *momUOut, double *momVOut, double *EOut,
           double dt, double dx, double dy, double gamma,
           int nCells, int niGhosts, int ni)
 {
-        #pragma omp parallel for
-        for (int n =0; n<nCells; n++) {
+    int index = threadIdx.x;
+    int stride = blockDim.x;
+
+    for (int n=index; n<nCells; n += stride) {
             int j = n/ni;
             int i = n - (ni*j);
 
@@ -49,7 +56,7 @@ int main(int argc, char* argv[]) {
     const int problem = 4;
 
     const double dtOut = 2.0;
-    const double tEnd = 80.0;
+    const double tEnd = 5.0;
 
 
     const int nCells = ni*nj;
@@ -62,6 +69,8 @@ int main(int argc, char* argv[]) {
     // 100x100 mesh using spherical Sod set-up
     Mesh2D mesh(ni, nj, problem);
 
+    int nCellsGhosts = mesh.niGhosts*mesh.njGhosts;
+
     if (myrank == 0) {
         mesh.dumpToSILO(0.0, 0);
     }
@@ -70,10 +79,16 @@ int main(int argc, char* argv[]) {
     double outNext = t + dtOut;
     int step = 0;
 
-    double *rhoNew = new double[mesh.niGhosts*mesh.njGhosts];
-    double *momUNew = new double[mesh.niGhosts*mesh.njGhosts];
-    double *momVNew = new double[mesh.niGhosts*mesh.njGhosts];
-    double *ENew = new double[mesh.niGhosts*mesh.njGhosts];
+    double *rhoNew;
+    double *momUNew;
+    double *momVNew;
+    double *ENew;
+
+    int allocSize = nCellsGhosts*sizeof(double);
+    cudaMallocManaged(&rhoNew, allocSize);
+    cudaMallocManaged(&momUNew, allocSize);
+    cudaMallocManaged(&momVNew, allocSize);
+    cudaMallocManaged(&ENew, allocSize);
 
     for (int i=0; i<mesh.njGhosts*mesh.niGhosts; i++) {
         rhoNew[i] = 0.0001;
@@ -84,15 +99,16 @@ int main(int argc, char* argv[]) {
 
     mesh.setBoundaries();
 
+    int blockSize = 256;
+    int numBlocks = (nCells + blockSize - 1) / blockSize;
+
+    numBlocks = 1;
+    blockSize = 256;
+
     for( ; ; ) {
         step++;
 
-        double dt = Hydro::getTimestep(
-            mesh.rho,  mesh.momU,  mesh.momV,  mesh.E,
-            mesh.dx, mesh.dy,
-            mesh.niGhosts*mesh.njGhosts,
-            mesh.gamma, mesh.cfl, mesh.dtmax
-        );
+        double dt = 0.013;
 
         dt = std::min(dt, outNext - t);
 
@@ -102,8 +118,9 @@ int main(int argc, char* argv[]) {
             std::cout << ", dt = " << dt << std::endl;
         }
 
+
         // Evolve the solution to next time step
-        evolve(
+        evolve<<<numBlocks, blockSize>>>(
             mesh.rho, mesh.momU, mesh.momV, mesh.E,
             rhoNew, momUNew, momVNew, ENew,
             dt, mesh.dx, mesh.dy, mesh.gamma,
@@ -111,13 +128,14 @@ int main(int argc, char* argv[]) {
         );
 
         // Copy into main data arrays
-        copy(
+        copy<<<numBlocks, blockSize>>>(
             mesh.rho, mesh.momU, mesh.momV, mesh.E,
             rhoNew, momUNew, momVNew, ENew,
             mesh.niGhosts*mesh.njGhosts
         );
 
-        mesh.setBoundaries();
+        cudaDeviceSynchronize();
+//         mesh.setBoundaries();
 
         t += dt;
         if (t >= outNext) {

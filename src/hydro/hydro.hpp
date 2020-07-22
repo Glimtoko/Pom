@@ -11,17 +11,14 @@ namespace Hydro {
         double E;
     };
 
-    Flux getFluxHLLC(
+    __device__
+    void getFluxHLLC(
         double uL, double vL, double rhoL, double pL,
         double uR, double vR, double rhoR, double pR,
-        double gamma
+        double gamma, Flux *flux
     );
 
-    void MUSCLHancock1D(
-        double* rho, double* E, double* momN, double* momT,
-        int ni, int iUpper, double gamma, double dt, double dx
-    );
-
+    __device__
     void MUSCLHancock2D(
         double* rhoOld, double* EOld, double* momUOld, double* momVOld,
         int i, int j, int k, int niGhosts,

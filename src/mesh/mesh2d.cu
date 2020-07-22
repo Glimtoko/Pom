@@ -52,10 +52,13 @@ Mesh2D::Mesh2D(int ni, int nj, int xy) {
     }
 
     // Set physical arrays
-    rho = new double[njGhosts*niGhosts];
-    momU = new double[njGhosts*niGhosts];
-    momV = new double[njGhosts*niGhosts];
-    E = new double[njGhosts*niGhosts];
+    int nCellsGhosts = niGhosts*njGhosts;
+    int allocSize = nCellsGhosts*sizeof(double);
+
+    cudaMallocManaged(&rho, allocSize);
+    cudaMallocManaged(&momU, allocSize);
+    cudaMallocManaged(&momV, allocSize);
+    cudaMallocManaged(&E, allocSize);
 
     for (int i=0; i<njGhosts*niGhosts; i++) {
         rho[i] = 0.0001;
@@ -349,8 +352,8 @@ void Mesh2D::Kill() {
     delete[] x;
     delete[] y;
 
-    delete[] rho;
-    delete[] momU;
-    delete[] momV;
-    delete[] E;
+    cudaFree(rho);
+    cudaFree(momU);
+    cudaFree(momV);
+    cudaFree(E);
 }

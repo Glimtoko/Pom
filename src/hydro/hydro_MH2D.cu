@@ -3,16 +3,17 @@
 #include <math.h>
 #include <iostream>
 
-double getLimiter(double di1, double di2, double omega);
-double getSlopeX(double* U, int i, int j, int niGhosts, double omega);
-double getSlopeY(double* U, int i, int j, int niGhosts, double omega);
+__device__ double getLimiter(double di1, double di2, double omega);
+__device__ double getSlopeX(double* U, int i, int j, int niGhosts, double omega);
+__device__ double getSlopeY(double* U, int i, int j, int niGhosts, double omega);
 
-double calcFluxRho(double rho, double u);
-double calcFluxMom(double rho, double u, double v, double p);
-double calcFluxE(double u, double E, double p);
+__device__ double calcFluxRho(double rho, double u);
+__device__ double calcFluxMom(double rho, double u, double v, double p);
+__device__ double calcFluxE(double u, double E, double p);
 
 #define GET(D, I, J) D[(J)*niGhosts + I]
 
+__device__
 void Hydro::MUSCLHancock2D(
     double* rhoOld, double* EOld, double* momUOld, double* momVOld,
     int iIndex, int jIndex, int kIndex, int niGhosts,
@@ -202,15 +203,15 @@ void Hydro::MUSCLHancock2D(
               - 0.5*rhoL[2]*vX4*vX4
     );
 
-    fluxL = Hydro::getFluxHLLC(
+    Hydro::getFluxHLLC(
         uX1, vX1, rhoX1, pX1,
         uX2, vX2, rhoX2, pX2,
-        gamma);
+        gamma, &fluxL);
 
-    fluxR = Hydro::getFluxHLLC(
+    Hydro::getFluxHLLC(
         uX3, vX3, rhoX3, pX3,
         uX4, vX4, rhoX4, pX4,
-        gamma);
+        gamma, &fluxR);
 
 
     // Y
@@ -246,15 +247,15 @@ void Hydro::MUSCLHancock2D(
               - 0.5*rhoD[4]*vY4*vY4
     );
 
-    fluxD = Hydro::getFluxHLLC(
+    Hydro::getFluxHLLC(
         vY1, uY1, rhoY1, pY1,
         vY2, uY2, rhoY2, pY2,
-        gamma);
+        gamma, &fluxD);
 
-    fluxU = Hydro::getFluxHLLC(
+    Hydro::getFluxHLLC(
         vY3, uY3, rhoY3, pY3,
         vY4, uY4, rhoY4, pY4,
-        gamma);
+        gamma, &fluxU);
 
     fx = dt/dx;
     fy = dt/dy;
@@ -266,7 +267,7 @@ void Hydro::MUSCLHancock2D(
 
 }
 
-double getSlopeX(double* U, int i, int j, int niGhosts, double omega) {
+__device__ double getSlopeX(double* U, int i, int j, int niGhosts, double omega) {
     double di1 = GET(U, i, j) - GET(U, i-1, j);
     double di2 = GET(U, i+1, j) - GET(U, i, j);
 
@@ -277,7 +278,7 @@ double getSlopeX(double* U, int i, int j, int niGhosts, double omega) {
     return diU;
 }
 
-double getSlopeY(double* U, int i, int j, int niGhosts, double omega) {
+__device__ double getSlopeY(double* U, int i, int j, int niGhosts, double omega) {
     double di1 = GET(U, i, j) - GET(U, i, j-1);
     double di2 = GET(U, i, j+1) - GET(U, i, j);
 
@@ -288,7 +289,7 @@ double getSlopeY(double* U, int i, int j, int niGhosts, double omega) {
     return diU;
 }
 
-double getLimiter(double di1, double di2, double omega) {
+__device__ double getLimiter(double di1, double di2, double omega) {
     double xi;
     // Slope limiter - Van Leer
     if (di2 == 0) {
@@ -299,22 +300,24 @@ double getLimiter(double di1, double di2, double omega) {
             xi = 0.0;
         } else {
             double xiR = 2.0/(1.0 - omega + (1 + omega)*r);
-            xi = std::min(2*r/(1+r), xiR);
+            xi = fmin(2*r/(1+r), xiR);
         }
     }
     return xi;
 }
 
+__device__
 inline double calcFluxRho(double rho, double u) {
     return rho*u;
 }
 
 
+__device__
 inline double calcFluxMom(double rho, double u, double v, double p) {
     return rho*u*v + p;
 }
 
-
+__device__
 inline double calcFluxE(double u, double E, double p) {
     return u*(E + p);
 }

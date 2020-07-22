@@ -2,10 +2,11 @@
 #include <math.h>
 #include <iostream>
 
-Hydro::Flux Hydro::getFluxHLLC(
+__device__
+void Hydro::getFluxHLLC(
     double uL, double vL, double rhoL, double pL,
     double uR, double vR, double rhoR, double pR,
-    double gamma) {
+    double gamma, Hydro::Flux *flux) {
 
     // Pressure estimate from PVRS solver
     double aL = sqrt((gamma*pL)/rhoL);
@@ -49,15 +50,15 @@ Hydro::Flux Hydro::getFluxHLLC(
     double momVR = vR*rhoR;
 
     // Funcion return
-    Flux flux;
+//     Flux flux;
 
     // Get flux
     if (0 <= SL) {
         // Flux = F(UL)
-        flux.rho = rhoL*uL;
-        flux.momU = rhoL*uL*uL + pL;
-        flux.momV = rhoL*vL*uL;
-        flux.E = uL*(EL + pL);
+        flux->rho = rhoL*uL;
+        flux->momU = rhoL*uL*uL + pL;
+        flux->momV = rhoL*vL*uL;
+        flux->E = uL*(EL + pL);
     } else if (SL < 0 && 0 <= Sstar) {
         // Flux = F(*L)
         double pLR = 0.5*(pL + pR + rhoL*(SL - uL)*(Sstar - uL) + rhoR*(SR - uR)*(Sstar - uR));
@@ -70,10 +71,10 @@ Hydro::Flux Hydro::getFluxHLLC(
         double fL_E = uL*(EL + pL);
 
         // Find F(*L)
-        flux.rho = (Sstar*(SL*rhoL - fL_rho))/d;
-        flux.momU = (Sstar*(SL*momUL - fL_momU) + SL*pLR)/d;
-        flux.momV = Sstar*(SL*momVL - fL_momV)/d;
-        flux.E = (Sstar*(SL*EL - fL_E) + SL*pLR*Sstar)/d;
+        flux->rho = (Sstar*(SL*rhoL - fL_rho))/d;
+        flux->momU = (Sstar*(SL*momUL - fL_momU) + SL*pLR)/d;
+        flux->momV = Sstar*(SL*momVL - fL_momV)/d;
+        flux->E = (Sstar*(SL*EL - fL_E) + SL*pLR*Sstar)/d;
     } else if (Sstar < 0 && 0 <= SR) {
         // Flux = F(*R)
         double pLR = 0.5*(pL + pR + rhoL*(SL - uL)*(Sstar - uL) + rhoR*(SR - uR)*(Sstar - uR));
@@ -86,17 +87,17 @@ Hydro::Flux Hydro::getFluxHLLC(
         double fR_E = uR*(ER + pR);
 
         // Find F(*R)
-        flux.rho = (Sstar*(SR*rhoR - fR_rho))/d;
-        flux.momU = (Sstar*(SR*momUR - fR_momU) + SR*pLR)/d;
-        flux.momV = Sstar*(SR*momVR - fR_momV)/d;
-        flux.E = (Sstar*(SR*ER - fR_E) + SR*pLR*Sstar)/d;
+        flux->rho = (Sstar*(SR*rhoR - fR_rho))/d;
+        flux->momU = (Sstar*(SR*momUR - fR_momU) + SR*pLR)/d;
+        flux->momV = Sstar*(SR*momVR - fR_momV)/d;
+        flux->E = (Sstar*(SR*ER - fR_E) + SR*pLR*Sstar)/d;
     } else {
         // Flux = F(UR)
-        flux.rho = rhoR*uR;
-        flux.momU = rhoR*uR*uR + pR;
-        flux.momV = rhoR*vR*uR;
-        flux.E = uR*(ER + pR);
+        flux->rho = rhoR*uR;
+        flux->momU = rhoR*uR*uR + pR;
+        flux->momV = rhoR*vR*uR;
+        flux->E = uR*(ER + pR);
     }
 
-    return flux;
+//     return flux;
 }
