@@ -22,71 +22,72 @@ void Hydro::MUSCLHancock2D(
 
     double omega = 0.0;
 
+    // 5 Point stencil
+    int stencil[5][2] =
+    {
+        {-1,0}, {0,0}, {1,0},
+        {0,-1}, {0,1}
+    };
+
+
     // Data reconstruction in X
-    double rhoL[3];
-    double rhoR[3];
-    double momUL[3];
-    double momUR[3];
-    double momVL[3];
-    double momVR[3];
-    double EL[3];
-    double ER[3];
+    double rhoL[5];
+    double rhoR[5];
+    double momUL[5];
+    double momUR[5];
+    double momVL[5];
+    double momVR[5];
+    double EL[5];
+    double ER[5];
+    double rhoD[5];
+    double rhoU[5];
+    double momUD[5];
+    double momUU[5];
+    double momVD[5];
+    double momVU[5];
+    double ED[5];
+    double EU[5];
 
-    int n = 0;
-    for (int i=iIndex-1; i<iIndex+2; i++) {
-        double di = 0.5*getSlopeX(rhoOld, i, jIndex, niGhosts, omega);
-        rhoL[n] = GET(rhoOld, i, jIndex) - di;
-        rhoR[n] = GET(rhoOld, i, jIndex) + di;
+    for (int n=0; n<5; n++) {
+        int i = iIndex + stencil[n][0];
+        int j = jIndex + stencil[n][1];
 
-        di = 0.5*getSlopeX(momUOld, i, jIndex, niGhosts, omega);
-        momUL[n] = GET(momUOld, i, jIndex) - di;
-        momUR[n] = GET(momUOld, i, jIndex) + di;
+        double di = 0.5*getSlopeX(rhoOld, i, j, niGhosts, omega);
+        rhoL[n] = GET(rhoOld, i, j) - di;
+        rhoR[n] = GET(rhoOld, i, j) + di;
 
-        di = 0.5*getSlopeX(momVOld, i, jIndex, niGhosts, omega);
-        momVL[n] = GET(momVOld, i, jIndex) - di;
-        momVR[n] = GET(momVOld, i, jIndex) + di;
+        di = 0.5*getSlopeX(momUOld, i, j, niGhosts, omega);
+        momUL[n] = GET(momUOld, i, j) - di;
+        momUR[n] = GET(momUOld, i, j) + di;
 
-        di = 0.5*getSlopeX(EOld, i, jIndex, niGhosts, omega);
-        EL[n] = GET(EOld, i, jIndex) - di;
-        ER[n] = GET(EOld, i, jIndex) + di;
+        di = 0.5*getSlopeX(momVOld, i, j, niGhosts, omega);
+        momVL[n] = GET(momVOld, i, j) - di;
+        momVR[n] = GET(momVOld, i, j) + di;
 
-        n++;
-    }
+        di = 0.5*getSlopeX(EOld, i, j, niGhosts, omega);
+        EL[n] = GET(EOld, i, j) - di;
+        ER[n] = GET(EOld, i, j) + di;
 
-    // Data reconstruction in Y
-    double rhoD[3];
-    double rhoU[3];
-    double momUD[3];
-    double momUU[3];
-    double momVD[3];
-    double momVU[3];
-    double ED[3];
-    double EU[3];
+        di = 0.5*getSlopeY(rhoOld, i, j, niGhosts, omega);
+        rhoD[n] = GET(rhoOld, i, j) - di;
+        rhoU[n] = GET(rhoOld, i, j) + di;
 
-    n = 0;
-    for (int j=jIndex-1; j<jIndex+2; j++) {
-        double di = 0.5*getSlopeY(rhoOld, iIndex, j, niGhosts, omega);
-        rhoD[n] = GET(rhoOld, iIndex, j) - di;
-        rhoU[n] = GET(rhoOld, iIndex, j) + di;
+        di = 0.5*getSlopeY(momUOld, i, j, niGhosts, omega);
+        momUD[n] = GET(momUOld, i, j) - di;
+        momUU[n] = GET(momUOld, i, j) + di;
 
-        di = 0.5*getSlopeY(momUOld, iIndex, j, niGhosts, omega);
-        momUD[n] = GET(momUOld, iIndex, j) - di;
-        momUU[n] = GET(momUOld, iIndex, j) + di;
+        di = 0.5*getSlopeY(momVOld, i, j, niGhosts, omega);
+        momVD[n] = GET(momVOld, i, j) - di;
+        momVU[n] = GET(momVOld, i, j) + di;
 
-        di = 0.5*getSlopeY(momVOld, iIndex, j, niGhosts, omega);
-        momVD[n] = GET(momVOld, iIndex, j) - di;
-        momVU[n] = GET(momVOld, iIndex, j) + di;
-
-        di = 0.5*getSlopeY(EOld, iIndex, j, niGhosts, omega);
-        ED[n] = GET(EOld, iIndex, j) - di;
-        EU[n] = GET(EOld, iIndex, j) + di;
-
-        n++;
+        di = 0.5*getSlopeY(EOld, i, j, niGhosts, omega);
+        ED[n] = GET(EOld, i, j) - di;
+        EU[n] = GET(EOld, i, j) + di;
     }
 
     double fx = 0.5*dt/dx;
     double fy = 0.5*dt/dy;
-    for (int i=0; i<3; i++) {
+    for (int i=0; i<5; i++) {
         double uL = momUL[i]/rhoL[i];
         double uR = momUR[i]/rhoR[i];
 
@@ -169,37 +170,36 @@ void Hydro::MUSCLHancock2D(
 
 
     Flux fluxL, fluxR, fluxU, fluxD;
-    int i = 1;
-    double rhoX1 = rhoR[i-1];
-    double uX1 = momUR[i-1]/rhoR[i-1];
-    double vX1 = momVR[i-1]/rhoR[i-1];
+    double rhoX1 = rhoR[0];
+    double uX1 = momUR[0]/rhoR[0];
+    double vX1 = momVR[0]/rhoR[0];
     double pX1 = (gamma - 1.0)*(
-        ER[i-1] - 0.5*rhoR[i-1]*uX1*uX1
-                - 0.5*rhoR[i-1]*vX1*vX1
+        ER[0] - 0.5*rhoR[0]*uX1*uX1
+              - 0.5*rhoR[0]*vX1*vX1
     );
 
-    double rhoX2 = rhoL[i];
-    double uX2 = momUL[i]/rhoL[i];
-    double vX2 = momVL[i]/rhoL[i];
+    double rhoX2 = rhoL[1];
+    double uX2 = momUL[1]/rhoL[1];
+    double vX2 = momVL[1]/rhoL[1];
     double pX2 = (gamma - 1.0)*(
-        EL[i] - 0.5*rhoL[i]*uX2*uX2
-              - 0.5*rhoL[i]*vX2*vX2
+        EL[1] - 0.5*rhoL[1]*uX2*uX2
+              - 0.5*rhoL[1]*vX2*vX2
     );
 
-    double rhoX3 = rhoR[i];
-    double uX3 = momUR[i]/rhoR[i];
-    double vX3 = momVR[i]/rhoR[i];
+    double rhoX3 = rhoR[1];
+    double uX3 = momUR[1]/rhoR[1];
+    double vX3 = momVR[1]/rhoR[1];
     double pX3 = (gamma - 1.0)*(
-        ER[i] - 0.5*rhoR[i]*uX3*uX3
-              - 0.5*rhoR[i]*vX3*vX3
+        ER[1] - 0.5*rhoR[1]*uX3*uX3
+              - 0.5*rhoR[1]*vX3*vX3
     );
 
-    double rhoX4 = rhoL[i+1];
-    double uX4 = momUL[i+1]/rhoL[i+1];
-    double vX4 = momVL[i+1]/rhoL[i+1];
+    double rhoX4 = rhoL[2];
+    double uX4 = momUL[2]/rhoL[2];
+    double vX4 = momVL[2]/rhoL[2];
     double pX4 = (gamma - 1.0)*(
-        EL[i+1] - 0.5*rhoL[i+1]*uX4*uX4
-                - 0.5*rhoL[i+1]*vX4*vX4
+        EL[2] - 0.5*rhoL[2]*uX4*uX4
+              - 0.5*rhoL[2]*vX4*vX4
     );
 
     fluxL = Hydro::getFluxHLLC(
@@ -214,36 +214,36 @@ void Hydro::MUSCLHancock2D(
 
 
     // Y
-    double rhoY1 = rhoU[i-1];
-    double uY1 = momUU[i-1]/rhoU[i-1];
-    double vY1 = momVU[i-1]/rhoU[i-1];
+    double rhoY1 = rhoU[3];
+    double uY1 = momUU[3]/rhoU[3];
+    double vY1 = momVU[3]/rhoU[3];
     double pY1 = (gamma - 1.0)*(
-        EU[i-1] - 0.5*rhoU[i-1]*uY1*uY1
-                - 0.5*rhoU[i-1]*vY1*vY1
+        EU[3] - 0.5*rhoU[3]*uY1*uY1
+              - 0.5*rhoU[3]*vY1*vY1
     );
 
-    double rhoY2 = rhoD[i];
-    double uY2 = momUD[i]/rhoD[i];
-    double vY2 = momVD[i]/rhoD[i];
+    double rhoY2 = rhoD[1];
+    double uY2 = momUD[1]/rhoD[1];
+    double vY2 = momVD[1]/rhoD[1];
     double pY2 = (gamma - 1.0)*(
-        ED[i] - 0.5*rhoD[i]*uY2*uY2
-              - 0.5*rhoD[i]*vY2*vY2
+        ED[1] - 0.5*rhoD[1]*uY2*uY2
+              - 0.5*rhoD[1]*vY2*vY2
     );
 
-    double rhoY3 = rhoU[i];
-    double uY3 = momUU[i]/rhoU[i];
-    double vY3 = momVU[i]/rhoU[i];
+    double rhoY3 = rhoU[1];
+    double uY3 = momUU[1]/rhoU[1];
+    double vY3 = momVU[1]/rhoU[1];
     double pY3 = (gamma - 1.0)*(
-        EU[i] - 0.5*rhoU[i]*uY3*uY3
-              - 0.5*rhoU[i]*vY3*vY3
+        EU[1] - 0.5*rhoU[1]*uY3*uY3
+              - 0.5*rhoU[1]*vY3*vY3
     );
 
-    double rhoY4 = rhoD[i+1];
-    double uY4 = momUD[i+1]/rhoD[i+1];
-    double vY4 = momVD[i+1]/rhoD[i+1];
+    double rhoY4 = rhoD[4];
+    double uY4 = momUD[4]/rhoD[4];
+    double vY4 = momVD[4]/rhoD[4];
     double pY4 = (gamma - 1.0)*(
-        ED[i+1] - 0.5*rhoD[i+1]*uY4*uY4
-                - 0.5*rhoD[i+1]*vY4*vY4
+        ED[4] - 0.5*rhoD[4]*uY4*uY4
+              - 0.5*rhoD[4]*vY4*vY4
     );
 
     fluxD = Hydro::getFluxHLLC(
@@ -259,10 +259,10 @@ void Hydro::MUSCLHancock2D(
     fx = dt/dx;
     fy = dt/dy;
 
-    rhoNew = GET(rhoOld, iIndex, jIndex) + fx*(fluxL.rho - fluxR.rho);// + fy*(fluxD.rho - fluxU.rho);
-    momUNew = GET(momUOld, iIndex, jIndex) + fx*(fluxL.momU - fluxR.momU);// + fy*(fluxD.momV - fluxU.momV);
-    momVNew = GET(momVOld, iIndex, jIndex) + fx*(fluxL.momV - fluxR.momV);// + fy*(fluxD.momU - fluxU.momU);
-    ENew = GET(EOld, iIndex, jIndex) + fx*(fluxL.E - fluxR.E);// + fy*(fluxD.E - fluxU.E);
+    rhoNew = GET(rhoOld, iIndex, jIndex) + fx*(fluxL.rho - fluxR.rho) + fy*(fluxD.rho - fluxU.rho);
+    momUNew = GET(momUOld, iIndex, jIndex) + fx*(fluxL.momU - fluxR.momU) + fy*(fluxD.momV - fluxU.momV);
+    momVNew = GET(momVOld, iIndex, jIndex) + fx*(fluxL.momV - fluxR.momV) + fy*(fluxD.momU - fluxU.momU);
+    ENew = GET(EOld, iIndex, jIndex) + fx*(fluxL.E - fluxR.E) + fy*(fluxD.E - fluxU.E);
 
 }
 

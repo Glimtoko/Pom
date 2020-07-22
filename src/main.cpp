@@ -7,15 +7,15 @@
 #include <fenv.h>
 
 int main(int argc, char* argv[]) {
-    //feenableexcept(FE_INVALID | FE_OVERFLOW);
+//     feenableexcept(FE_INVALID | FE_OVERFLOW);
 
     // Mesh sizes - hardcoded for now
-    const int ni = 300;
-    const int nj = 100;
-    const int problem = 3;
+    const int ni = 600;
+    const int nj = 240;
+    const int problem = 4;
 
-    const double dtOut = 1.0;
-    const double tEnd = 20.0;
+    const double dtOut = 2.0;
+    const double tEnd = 80.0;
 
     // MPI environment
     int nprocs, myrank, error;
@@ -86,7 +86,7 @@ int main(int argc, char* argv[]) {
 //             mesh.momV[i] = momVNew[i];
 //             mesh.E[i] = ENew[i];
 //         }
-
+#pragma omp parallel for collapse(2)
         for (int j = 2; j<mesh.jUpper; j++) {
             for (int i = 2; i<mesh.iUpper; i++) {
                 int index = j*mesh.niGhosts + i;
@@ -97,7 +97,7 @@ int main(int argc, char* argv[]) {
             }
         }
 
-//         mesh.setBoundaries();
+        mesh.setBoundaries();
 
         t += dt;
         if (t >= outNext) {

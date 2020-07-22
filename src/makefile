@@ -1,7 +1,7 @@
 CC = g++
-CFLAGS = -g -Wall -Wextra -ansi -pedantic -fsanitize=address -std=c++17
+#CFLAGS = -g -Wall -Wextra -ansi -pedantic -fsanitize=address -std=c++17
 #CFLAGS = -g
-#CFLAGS = -O3 -std=c++17 -fopenmp
+CFLAGS = -O3 -std=c++17 -fopenmp
 
 OBJECTS = main.o mesh2d.o hydro_flux.o hydro_timestep.o hydro_MH1D.o hydro_MH2D.o
 
