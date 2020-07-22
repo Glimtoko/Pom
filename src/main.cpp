@@ -6,6 +6,40 @@
 
 #include <fenv.h>
 
+void copy(double *rhoOut, double *momUOut, double *momVOut, double *EOut,
+          double *rhoIn, double *momUIn, double *momVIn, double *EIn,
+          int nCells)
+{
+    #pragma omp parallel for
+    for (int n=0; n<nCells; n++) {
+        rhoOut[n] = rhoIn[n];
+        EOut[n] = EIn[n];
+        momUOut[n] = momUIn[n];
+        momVOut[n] = momVIn[n];
+    }
+}
+
+
+void evolve(double *rhoIn, double *momUIn, double *momVIn, double *EIn,
+          double *rhoOut, double *momUOut, double *momVOut, double *EOut,
+          double dt, double dx, double dy, double gamma,
+          int nCells, int niGhosts, int ni)
+{
+        #pragma omp parallel for
+        for (int n =0; n<nCells; n++) {
+            int j = n/ni;
+            int i = n - (ni*j);
+
+            Hydro::MUSCLHancock2D(
+                rhoIn, EIn, momUIn, momVIn,
+                i+2, j+2, 0, niGhosts,
+                gamma, dt, dx, dy,
+                rhoOut, EOut, momUOut, momVOut
+            );
+        }
+}
+
+
 int main(int argc, char* argv[]) {
 //     feenableexcept(FE_INVALID | FE_OVERFLOW);
 
@@ -16,6 +50,9 @@ int main(int argc, char* argv[]) {
 
     const double dtOut = 2.0;
     const double tEnd = 80.0;
+
+
+    const int nCells = ni*nj;
 
     // MPI environment
     int nprocs, myrank, error;
@@ -65,37 +102,20 @@ int main(int argc, char* argv[]) {
             std::cout << ", dt = " << dt << std::endl;
         }
 
-#pragma omp parallel for collapse(2)
-        for (int j = 2; j<mesh.jUpper; j++) {
-            for (int i = 2; i<mesh.iUpper; i++) {
-                Hydro::MUSCLHancock2D(
-                    mesh.rho, mesh.E, mesh.momU, mesh.momV,
-                    i, j, 0, mesh.niGhosts,
-                    mesh.gamma, dt, mesh.dx, mesh.dy,
-                    rhoNew[j*mesh.niGhosts + i],
-                    ENew[j*mesh.niGhosts + i],
-                    momUNew[j*mesh.niGhosts + i],
-                    momVNew[j*mesh.niGhosts + i]
-                );
-            }
-        }
+        // Evolve the solution to next time step
+        evolve(
+            mesh.rho, mesh.momU, mesh.momV, mesh.E,
+            rhoNew, momUNew, momVNew, ENew,
+            dt, mesh.dx, mesh.dy, mesh.gamma,
+            nCells, mesh.niGhosts, ni
+        );
 
-//         for (int i=0; i<mesh.niGhosts*mesh.njGhosts; i++) {
-//             mesh.rho[i] = rhoNew[i];
-//             mesh.momU[i] = momUNew[i];
-//             mesh.momV[i] = momVNew[i];
-//             mesh.E[i] = ENew[i];
-//         }
-#pragma omp parallel for collapse(2)
-        for (int j = 2; j<mesh.jUpper; j++) {
-            for (int i = 2; i<mesh.iUpper; i++) {
-                int index = j*mesh.niGhosts + i;
-                mesh.rho[index] = rhoNew[index];
-                mesh.E[index] = ENew[index];
-                mesh.momU[index] = momUNew[index];
-                mesh.momV[index] = momVNew[index];
-            }
-        }
+        // Copy into main data arrays
+        copy(
+            mesh.rho, mesh.momU, mesh.momV, mesh.E,
+            rhoNew, momUNew, momVNew, ENew,
+            mesh.niGhosts*mesh.njGhosts
+        );
 
         mesh.setBoundaries();
 

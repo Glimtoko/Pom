@@ -17,7 +17,7 @@ void Hydro::MUSCLHancock2D(
     double* rhoOld, double* EOld, double* momUOld, double* momVOld,
     int iIndex, int jIndex, int kIndex, int niGhosts,
     double gamma, double dt, double dx, double dy,
-    double& rhoNew, double& ENew, double& momUNew, double& momVNew
+    double* rhoNew, double* ENew, double* momUNew, double* momVNew
 ) {
 
     double omega = 0.0;
@@ -259,10 +259,10 @@ void Hydro::MUSCLHancock2D(
     fx = dt/dx;
     fy = dt/dy;
 
-    rhoNew = GET(rhoOld, iIndex, jIndex) + fx*(fluxL.rho - fluxR.rho) + fy*(fluxD.rho - fluxU.rho);
-    momUNew = GET(momUOld, iIndex, jIndex) + fx*(fluxL.momU - fluxR.momU) + fy*(fluxD.momV - fluxU.momV);
-    momVNew = GET(momVOld, iIndex, jIndex) + fx*(fluxL.momV - fluxR.momV) + fy*(fluxD.momU - fluxU.momU);
-    ENew = GET(EOld, iIndex, jIndex) + fx*(fluxL.E - fluxR.E) + fy*(fluxD.E - fluxU.E);
+    GET(rhoNew, iIndex, jIndex) = GET(rhoOld, iIndex, jIndex) + fx*(fluxL.rho - fluxR.rho) + fy*(fluxD.rho - fluxU.rho);
+    GET(momUNew, iIndex, jIndex) = GET(momUOld, iIndex, jIndex) + fx*(fluxL.momU - fluxR.momU) + fy*(fluxD.momV - fluxU.momV);
+    GET(momVNew, iIndex, jIndex) = GET(momVOld, iIndex, jIndex) + fx*(fluxL.momV - fluxR.momV) + fy*(fluxD.momU - fluxU.momU);
+    GET(ENew, iIndex, jIndex) = GET(EOld, iIndex, jIndex) + fx*(fluxL.E - fluxR.E) + fy*(fluxD.E - fluxU.E);
 
 }
 
