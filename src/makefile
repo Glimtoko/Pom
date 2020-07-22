@@ -1,8 +1,9 @@
-CC = mpic++
-#CFLAGS = -g -Wall -Wextra -ansi -pedantic -fsanitize=address -std=c++17
-CFLAGS = -O3 -std=c++17
+CC = g++
+CFLAGS = -g -Wall -Wextra -ansi -pedantic -fsanitize=address -std=c++17
+#CFLAGS = -g
+#CFLAGS = -O3 -std=c++17 -fopenmp
 
-OBJECTS = main.o mesh2d.o hydro_flux.o hydro_timestep.o hydro_MH1D.o
+OBJECTS = main.o mesh2d.o hydro_flux.o hydro_timestep.o hydro_MH1D.o hydro_MH2D.o
 
 # Installation directory
 INSTALL_DIR := /prod/Tonberry/bin/
@@ -19,20 +20,20 @@ VPATH=.:./hydro:./mesh
 
 .PHONY: clean
 
-tonberry: $(OBJECTS)
-	$(CC) $(CFLAGS) *.o -o tonberry -lm $(LIB)
+pom: $(OBJECTS)
+	$(CC) $(CFLAGS) *.o -o pom -lm $(LIB)
 
 clean:
 	-rm *.o
-	-rm tonberry
+	-rm pom
 
 
-install: tonberry
+install: pom
 	@echo Installing to $(INSTALL_DIR)
-	cp tonberry $(INSTALL_DIR)
-	chmod +x $(INSTALL_DIR)/tonberry
+	cp pom $(INSTALL_DIR)
+	chmod +x $(INSTALL_DIR)/pom
 
-main.o: mesh2d.o hydro_flux.o hydro_timestep.o hydro_MH1D.o
+main.o: mesh2d.o hydro_flux.o hydro_timestep.o hydro_MH1D.o hydro_MH2D.o
 
 
 %.o: %.cpp

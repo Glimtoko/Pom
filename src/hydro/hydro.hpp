@@ -22,6 +22,13 @@ namespace Hydro {
         int ni, int iUpper, double gamma, double dt, double dx
     );
 
+    void MUSCLHancock2D(
+        double* rhoOld, double* EOld, double* momUOld, double* momVOld,
+        int i, int j, int k, int niGhosts,
+        double gamma, double dt, double dx, double dy,
+        double& rhoNew, double& ENew, double& momUNew, double& momVNew
+    );
+
     double getTimestep(
         double *rho, double *momU, double *momV, double *E,
         double dx, double dy,

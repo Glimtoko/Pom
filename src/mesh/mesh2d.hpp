@@ -49,6 +49,8 @@ public:
                 void(*flux)(double*, double*, double*, double*, int, int, double, double, double)
     );
 
+    void sweep(double dt);
+
 //     double* &getMomentum(Sweep, Direction);
 };
 #endif

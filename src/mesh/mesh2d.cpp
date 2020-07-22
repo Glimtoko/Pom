@@ -5,7 +5,6 @@
 #include "ncVar.h"
 
 #include "silo.h"
-#include "mpi.h"
 
 #include <math.h>
 #include <string.h>
@@ -57,6 +56,13 @@ Mesh2D::Mesh2D(int ni, int nj, int xy) {
     momU = new double[njGhosts*niGhosts];
     momV = new double[njGhosts*niGhosts];
     E = new double[njGhosts*niGhosts];
+
+    for (int i=0; i<njGhosts*niGhosts; i++) {
+        rho[i] = 0.0001;
+        momU[i] = 0.0001;
+        momV[i] = 0.0001;
+        E[i] = 0.0001;
+    }
 
     // Boundary values
     double bL = 1.0;
@@ -247,7 +253,7 @@ void Mesh2D::dumpToSILO(double time, int step) {
     sprintf(stateNo, "%03d", this->dumpStateNo);
 
     char fileName[20];
-    strcpy(fileName, "tonberry");
+    strcpy(fileName, "pom");
     strcat(fileName, stateNo);
     strcat(fileName, ".silo");
 
@@ -293,6 +299,7 @@ void Mesh2D::dumpToSILO(double time, int step) {
     // Set quant storage
     int cellDims[2] = {iSize, jSize};
     double *data = new double[cellDims[0]*cellDims[1]];
+    double *data2 = new double[cellDims[0]*cellDims[1]];
 
 
     // Write density
@@ -303,6 +310,17 @@ void Mesh2D::dumpToSILO(double time, int step) {
         }
     }
     DBPutQuadvar1(file, "Density", "mesh1", data, cellDims, 2, NULL, 0, DB_DOUBLE, DB_ZONECENT, NULL);
+
+    // Write momenta
+    index = 0;
+    for (int j=2; j<this->jUpper; j++) {
+        for (int i=2; i<this->iUpper; i++) {
+            data[index] = _PGET(this, momU, j, i);
+            data2[index++] = _PGET(this, momV, j, i);
+        }
+    }
+    DBPutQuadvar1(file, "MomU", "mesh1", data, cellDims, 2, NULL, 0, DB_DOUBLE, DB_ZONECENT, NULL);
+    DBPutQuadvar1(file, "MomV", "mesh1", data2, cellDims, 2, NULL, 0, DB_DOUBLE, DB_ZONECENT, NULL);
 
     // Write pressure
     index = 0;
@@ -323,6 +341,7 @@ void Mesh2D::dumpToSILO(double time, int step) {
 
     // Free storage
     delete[] data;
+    delete[] data2;
 }
 
 
@@ -334,228 +353,4 @@ void Mesh2D::Kill() {
     delete[] momU;
     delete[] momV;
     delete[] E;
-}
-
-
-void Mesh2D::sweepX(double dt,
-            void(*flux)(double*, double*, double*, double*, int, int, double, double, double)
-){
-    int ni = this->niGhosts;
-    int nj = this->jUpper - 2;
-    int iUpper = this->iUpper;
-    int jUpper = this->jUpper;
-    double gamma = this->gamma;
-    double dx = this->dx;
-
-    // MPI environment
-    int nprocs, myrank, error;
-    nprocs = MPI::COMM_WORLD.Get_size();
-    myrank = MPI::COMM_WORLD.Get_rank();
-
-    // Get decomposition size
-    int njDecomp = nj/nprocs;
-
-    // Create a full 1D representation of the data
-    double* rhoAll = new double[ni*nj];
-    double* momNAll = new double[ni*nj];
-    double* momTAll = new double[ni*nj];
-    double* EAll = new double[ni*nj];
-
-    int index = 0;
-    for (int j=2; j<jUpper; j++) {
-        for (int i=0; i<ni; i++) {
-            rhoAll[index] = _PGET(this, rho, j, i);
-            momNAll[index] = _PGET(this, momU, j, i);
-            momTAll[index] = _PGET(this, momV, j, i);
-            EAll[index] = _PGET(this, E, j, i);
-
-            index += 1;
-        }
-    }
-
-    // Local 1D representation of data
-    double* rhoLocal = new double[ni*njDecomp];
-    double* momNLocal = new double[ni*njDecomp];
-    double* momTLocal = new double[ni*njDecomp];
-    double* ELocal = new double[ni*njDecomp];
-
-    MPI::COMM_WORLD.Scatter(rhoAll, ni*njDecomp, MPI::DOUBLE, rhoLocal, ni*njDecomp, MPI::DOUBLE, 0);
-    MPI::COMM_WORLD.Scatter(momNAll, ni*njDecomp, MPI::DOUBLE, momNLocal, ni*njDecomp, MPI::DOUBLE, 0);
-    MPI::COMM_WORLD.Scatter(momTAll, ni*njDecomp, MPI::DOUBLE, momTLocal, ni*njDecomp, MPI::DOUBLE, 0);
-    MPI::COMM_WORLD.Scatter(EAll, ni*njDecomp, MPI::DOUBLE, ELocal, ni*njDecomp, MPI::DOUBLE, 0);
-
-    double* rho = new double[ni];
-    double* momN = new double[ni];
-    double* momT = new double[ni];
-    double* E = new double[ni];
-
-    index = 0;
-    int index2 = 0;
-    for (int j=0; j<njDecomp; j++) {
-        // Pack 1D data
-        for (int i=0; i<ni; i++) {
-            rho[i] = rhoLocal[index];
-            momN[i] = momNLocal[index];
-            momT[i] = momTLocal[index];
-            E[i] = ELocal[index];
-            index++;
-        }
-        // Sweep
-        flux(rho, E, momN, momT, ni, iUpper, gamma, dt, dx);
-
-        // Unpack 1D data
-        for (int i=0; i<ni; i++) {
-            rhoLocal[index2] = rho[i];
-            momNLocal[index2] = momN[i];
-            momTLocal[index2] = momT[i];
-            ELocal[index2] = E[i];
-            index2++;
-        }
-    }
-
-    MPI::COMM_WORLD.Gather(rhoLocal, ni*njDecomp, MPI::DOUBLE, rhoAll, ni*njDecomp, MPI::DOUBLE, 0);
-    MPI::COMM_WORLD.Gather(momNLocal, ni*njDecomp, MPI::DOUBLE, momNAll, ni*njDecomp, MPI::DOUBLE, 0);
-    MPI::COMM_WORLD.Gather(momTLocal, ni*njDecomp, MPI::DOUBLE, momTAll, ni*njDecomp, MPI::DOUBLE, 0);
-    MPI::COMM_WORLD.Gather(ELocal, ni*njDecomp, MPI::DOUBLE, EAll, ni*njDecomp, MPI::DOUBLE, 0);
-
-    index = 0;
-    for (int j=2; j<jUpper; j++) {
-        for (int i=0; i<ni; i++) {
-            _PGET(this, rho, j, i) = rhoAll[index];
-            _PGET(this, momU, j, i) = momNAll[index];
-            _PGET(this, momV, j, i) = momTAll[index];
-            _PGET(this, E, j, i) = EAll[index];
-            index += 1;
-        }
-    }
-
-    delete[] rho;
-    delete[] momN;
-    delete[] momT;
-    delete[] E;
-
-    delete[] rhoAll;
-    delete[] momNAll;
-    delete[] momTAll;
-    delete[] EAll;
-
-    delete[] rhoLocal;
-    delete[] momNLocal;
-    delete[] momTLocal;
-    delete[] ELocal;
-
-    // Boundary update
-    this->setBoundaries();
-}
-
-
-void Mesh2D::sweepY(double dt,
-            void(*flux)(double*, double*, double*, double*, int, int, double, double, double)
-) {
-    int nj = this->njGhosts;
-    int ni = this->iUpper - 2;
-    int iUpper = this->iUpper;
-    int jUpper = this->jUpper;
-    double gamma = this->gamma;
-    double dy = this->dy;
-
-    // MPI environment
-    int nprocs, myrank, error;
-    nprocs = MPI::COMM_WORLD.Get_size();
-    myrank = MPI::COMM_WORLD.Get_rank();
-
-    // Get decomposition size
-    int niDecomp = ni/nprocs;
-
-    // Create a full 1D representation of the data
-    double* rhoAll = new double[ni*nj];
-    double* momNAll = new double[ni*nj];
-    double* momTAll = new double[ni*nj];
-    double* EAll = new double[ni*nj];
-
-    int index = 0;
-    for (int i=2; i<iUpper; i++) {
-        for (int j=0; j<nj; j++) {
-            rhoAll[index] = _PGET(this, rho, j, i);
-            momNAll[index] = _PGET(this, momV, j, i);
-            momTAll[index] = _PGET(this, momU, j, i);
-            EAll[index] = _PGET(this, E, j, i);
-
-            index += 1;
-        }
-    }
-
-    // Local 1D representation of data
-    double* rhoLocal = new double[nj*niDecomp];
-    double* momNLocal = new double[nj*niDecomp];
-    double* momTLocal = new double[nj*niDecomp];
-    double* ELocal = new double[nj*niDecomp];
-
-    MPI::COMM_WORLD.Scatter(rhoAll, nj*niDecomp, MPI::DOUBLE, rhoLocal, nj*niDecomp, MPI::DOUBLE, 0);
-    MPI::COMM_WORLD.Scatter(momNAll, nj*niDecomp, MPI::DOUBLE, momNLocal, nj*niDecomp, MPI::DOUBLE, 0);
-    MPI::COMM_WORLD.Scatter(momTAll, nj*niDecomp, MPI::DOUBLE, momTLocal, nj*niDecomp, MPI::DOUBLE, 0);
-    MPI::COMM_WORLD.Scatter(EAll, nj*niDecomp, MPI::DOUBLE, ELocal, nj*niDecomp, MPI::DOUBLE, 0);
-
-    double* rho = new double[nj];
-    double* momN = new double[nj];
-    double* momT = new double[nj];
-    double* E = new double[nj];
-
-    int index2 = 0;
-    index = 0;
-    for (int i=0; i<niDecomp; i++) {
-        // Pack 1D data
-        for (int j=0; j<nj; j++) {
-            rho[j] = rhoLocal[index];
-            momN[j] = momNLocal[index];
-            momT[j] = momTLocal[index];
-            E[j] = ELocal[index];
-            index++;
-        }
-        // Sweep
-        flux(rho, E, momN, momT, nj, jUpper, gamma, dt, dy);
-
-        // Unpack 1D data
-        for (int j=0; j<nj; j++) {
-            rhoLocal[index2] = rho[j];
-            momNLocal[index2] = momN[j];
-            momTLocal[index2] = momT[j];
-            ELocal[index2] = E[j];
-            index2++;
-        }
-    }
-
-    MPI::COMM_WORLD.Gather(rhoLocal, nj*niDecomp, MPI::DOUBLE, rhoAll, nj*niDecomp, MPI::DOUBLE, 0);
-    MPI::COMM_WORLD.Gather(momNLocal, nj*niDecomp, MPI::DOUBLE, momNAll, nj*niDecomp, MPI::DOUBLE, 0);
-    MPI::COMM_WORLD.Gather(momTLocal, nj*niDecomp, MPI::DOUBLE, momTAll, nj*niDecomp, MPI::DOUBLE, 0);
-    MPI::COMM_WORLD.Gather(ELocal, nj*niDecomp, MPI::DOUBLE, EAll, nj*niDecomp, MPI::DOUBLE, 0);
-
-    index = 0;
-    for (int i=2; i<iUpper; i++) {
-        for (int j=0; j<nj; j++) {
-            _PGET(this, rho, j, i) = rhoAll[index];
-            _PGET(this, momU, j, i) = momTAll[index];
-            _PGET(this, momV, j, i) = momNAll[index];
-            _PGET(this, E, j, i) = EAll[index];
-            index += 1;
-        }
-    }
-
-    delete[] rho;
-    delete[] momN;
-    delete[] momT;
-    delete[] E;
-
-    delete[] rhoAll;
-    delete[] momNAll;
-    delete[] momTAll;
-    delete[] EAll;
-
-    delete[] rhoLocal;
-    delete[] momNLocal;
-    delete[] momTLocal;
-    delete[] ELocal;
-
-    // Boundary update
-    this->setBoundaries();
 }
