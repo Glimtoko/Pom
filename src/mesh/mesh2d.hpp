@@ -16,7 +16,8 @@ public:
     int iUpper;
     int jUpper;
 
-    int dumpStateNo = 0;
+    int dumpStateNoSILO = 0;
+    int dumpStateNoTIO = 0;
 
     double gamma;
     double dtmax;
@@ -40,6 +41,7 @@ public:
     void Kill();
     void setBoundaries();
     void dumpToSILO(double, int);
+    void dumpToTIO(double, int);
 
     void sweepX(double dt,
                 void(*flux)(double*, double*, double*, double*, int, int, double, double, double)

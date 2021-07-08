@@ -64,6 +64,7 @@ int main(int argc, char* argv[]) {
 
     if (myrank == 0) {
         mesh.dumpToSILO(0.0, 0);
+        mesh.dumpToTIO(0.0, 0);
     }
 
     double t = 0.0;
@@ -122,7 +123,10 @@ int main(int argc, char* argv[]) {
         t += dt;
         if (t >= outNext) {
             outNext += dtOut;
-            if (myrank == 0) mesh.dumpToSILO(t, step);
+            if (myrank == 0) {
+                mesh.dumpToSILO(t, step);
+                mesh.dumpToTIO(t, step);
+            }
         }
         if (t > tEnd || step > 100000) break;
     }

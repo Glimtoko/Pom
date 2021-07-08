@@ -1,13 +1,15 @@
 #include <valarray>
 
-#include "ncFile.h"
-#include "ncDim.h"
-#include "ncVar.h"
+//#include "ncFile.h"
+//#include "ncDim.h"
+//#include "ncVar.h"
 
 #include "silo.h"
+#include "typhonio.h"
 
 #include <math.h>
 #include <string.h>
+#include <iostream>
 
 #include "mesh2d.hpp"
 
@@ -247,10 +249,311 @@ void Mesh2D::setBoundaries() {
 
 }
 
+void Mesh2D::dumpToTIO(double time, int step) {
+    char stateNo[4];
+    this->dumpStateNoTIO++;
+    sprintf(stateNo, "%03d", this->dumpStateNoTIO);
+
+    char fileName[20];
+    strcpy(fileName, "pom");
+    strcat(fileName, stateNo);
+    strcat(fileName, ".h5");
+
+    std::cout << "Outputting to " << fileName << std::endl;
+
+    // Create a new file. We're doing one file per state, as it's just easier
+    TIO_File_t fileID;
+    TIO_Create(
+        fileName, 
+        &fileID, 
+        TIO_ACC_REPLACE, 
+        "pom", 
+        "0.1", 
+        "N/A", 
+        "N/A", 
+        TIO_NULL, 
+        TIO_NULL, 
+        TIO_NULL
+    );
+
+    // Create a state
+    char stateName[20];
+    strcpy(stateName, "state_");
+    strcat(stateName, stateNo);
+
+    TIO_Object_t stateID;
+    TIO_Create_State(fileID, stateName, &stateID, this->dumpStateNoTIO, time, "s");
+
+    // Size of mesh, ignoring boundary cells
+    int jSize = this->jUpper - this->nghosts;
+    int iSize = this->iUpper - this->nghosts;
+
+    // Create the mesh
+    TIO_Object_t meshID;
+    TIO_Create_Mesh( 
+        fileID,
+        stateID,
+        "mesh",
+        &meshID,
+        TIO_MESH_QUAD,
+        TIO_COORD_CARTESIAN,
+        TIO_FALSE,
+        "",
+        0,
+        TIO_INT,
+        TIO_DOUBLE,
+        TIO_2D,
+        iSize+1,
+        jSize+1,
+        0,
+        0,
+        1,
+        "cm",
+        "cm",
+        "",
+        "X",
+        "Y",
+        "" 
+    );
+
+    // Create node centred Coordinates
+    int nodeDims[2] = {iSize + 1, jSize + 1};
+    double *x = new double[nodeDims[0]];
+    double *y = new double[nodeDims[1]];
+
+    for (int i=0; i<nodeDims[0]; i++) {
+        x[i] = (i)*this->dx;
+    }
+
+    for (int j=0; j<nodeDims[1]; j++) {
+        y[j] = (j)*this->dy;
+    }
+
+    // Write the mesh
+    TIO_Write_QuadMesh_All( 
+        fileID,
+        meshID,
+        TIO_DOUBLE,
+        x,
+        y,
+        NULL 
+    );
+
+    // We need a material, so just create an array of ones...
+    int *mat = new int[iSize*jSize];
+    for (int i = 0; i < iSize*jSize; i++) {
+        mat[i] = 1;
+    }
+
+    TIO_Object_t materialID;
+    TIO_Create_Material(
+        fileID,
+        meshID,
+        "material",
+        &materialID,
+        TIO_INT,
+        1,
+        0,
+        TIO_FALSE,
+        TIO_INT,
+        TIO_INT,
+        TIO_DOUBLE
+    );
+
+    TIO_Write_QuadMaterial_Chunk( 
+        fileID,
+        materialID,
+        1,
+        TIO_XFER_NULL,
+        TIO_INT,
+        mat,
+        TIO_INT,
+        TIO_INT,
+        TIO_DOUBLE,
+        NULL,
+        NULL,
+        NULL,
+        NULL
+    );
+
+    // Quants
+    TIO_Object_t quantID;
+
+    // Set quant storage
+    double *data = new double[iSize*jSize];
+
+    // Create a quant for Density
+    TIO_Create_Quant( 
+        fileID,
+        meshID,
+        "density",
+        &quantID,
+        TIO_DOUBLE,
+        TIO_CENTRE_CELL,
+        0,
+        TIO_FALSE,
+        "g/cc"
+    );
+
+    // Write density into storage
+    int index = 0;
+    for (int j=2; j<this->jUpper; j++) {
+        for (int i=2; i<this->iUpper; i++) {
+            data[index++] = _PGET(this, rho, j, i);
+        }
+    }
+
+    // Write quant
+    TIO_Write_QuadQuant_Chunk(
+        fileID,
+        quantID,
+        1,
+        TIO_XFER_NULL,
+        TIO_DOUBLE,
+        data,
+        NULL
+    );
+
+    TIO_Close_Quant(
+        fileID,
+        quantID 
+    );
+
+
+    // Create a quant for momU
+    TIO_Create_Quant( 
+        fileID,
+        meshID,
+        "momentum - U",
+        &quantID,
+        TIO_DOUBLE,
+        TIO_CENTRE_CELL,
+        0,
+        TIO_FALSE,
+        "gcm/s"
+    );
+
+    // Write density into storage
+    index = 0;
+    for (int j=2; j<this->jUpper; j++) {
+        for (int i=2; i<this->iUpper; i++) {
+            data[index++] = _PGET(this, momU, j, i);
+        }
+    }
+
+    // Write quant
+    TIO_Write_QuadQuant_Chunk(
+        fileID,
+        quantID,
+        1,
+        TIO_XFER_NULL,
+        TIO_DOUBLE,
+        data,
+        NULL
+    );
+
+    TIO_Close_Quant(
+        fileID,
+        quantID 
+    );
+
+
+    // Create a quant for momV
+    TIO_Create_Quant( 
+        fileID,
+        meshID,
+        "momentum - V",
+        &quantID,
+        TIO_DOUBLE,
+        TIO_CENTRE_CELL,
+        0,
+        TIO_FALSE,
+        "gcm/s"
+    );
+
+    // Write density into storage
+    index = 0;
+    for (int j=2; j<this->jUpper; j++) {
+        for (int i=2; i<this->iUpper; i++) {
+            data[index++] = _PGET(this, momV, j, i);
+        }
+    }
+
+    // Write quant
+    TIO_Write_QuadQuant_Chunk(
+        fileID,
+        quantID,
+        1,
+        TIO_XFER_NULL,
+        TIO_DOUBLE,
+        data,
+        NULL
+    );
+
+    TIO_Close_Quant(
+        fileID,
+        quantID 
+    );
+
+    // Create a quant for pressure
+    TIO_Create_Quant( 
+        fileID,
+        meshID,
+        "pressure",
+        &quantID,
+        TIO_DOUBLE,
+        TIO_CENTRE_CELL,
+        0,
+        TIO_FALSE,
+        ""
+    );
+
+    // Write density into storage
+    index = 0;
+    for (int j=2; j<this->jUpper; j++) {
+        for (int i=2; i<this->iUpper; i++) {
+            double rho = _PGET(this, rho, j, i);
+            double u = _PGET(this, momU, j, i)/rho;
+            double v = _PGET(this, momV, j, i)/rho;
+            double p = (this->gamma - 1.0)*(_PGET(this, E, j, i) - 0.5*v*v - 0.5*u*u);
+
+            data[index++] = p;
+        }
+    }
+
+    // Write quant
+    TIO_Write_QuadQuant_Chunk(
+        fileID,
+        quantID,
+        1,
+        TIO_XFER_NULL,
+        TIO_DOUBLE,
+        data,
+        NULL
+    );
+
+    TIO_Close_Quant(
+        fileID,
+        quantID 
+    );
+
+    TIO_Close_Mesh(
+        fileID,
+        meshID 
+    );
+
+    TIO_Close_State(
+        fileID,
+        stateID 
+    );
+
+    TIO_Close(fileID);
+}
+
 void Mesh2D::dumpToSILO(double time, int step) {
     char stateNo[4];
-    this->dumpStateNo++;
-    sprintf(stateNo, "%03d", this->dumpStateNo);
+    this->dumpStateNoSILO++;
+    sprintf(stateNo, "%03d", this->dumpStateNoSILO);
 
     char fileName[20];
     strcpy(fileName, "pom");
