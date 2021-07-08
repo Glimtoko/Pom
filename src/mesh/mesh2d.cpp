@@ -261,9 +261,11 @@ void Mesh2D::dumpToTIO(double time, int step) {
 
     std::cout << "Outputting to " << fileName << std::endl;
 
+    TIO_t stat;
+
     // Create a new file. We're doing one file per state, as it's just easier
     TIO_File_t fileID;
-    TIO_Create(
+    stat = TIO_Create(
         fileName, 
         &fileID, 
         TIO_ACC_REPLACE, 
@@ -275,6 +277,7 @@ void Mesh2D::dumpToTIO(double time, int step) {
         TIO_NULL, 
         TIO_NULL
     );
+    std::cout << "Stat: " << stat << std::endl;
 
     // Create a state
     char stateName[20];
@@ -282,7 +285,8 @@ void Mesh2D::dumpToTIO(double time, int step) {
     strcat(stateName, stateNo);
 
     TIO_Object_t stateID;
-    TIO_Create_State(fileID, stateName, &stateID, this->dumpStateNoTIO, time, "s");
+    stat = TIO_Create_State(fileID, stateName, &stateID, this->dumpStateNoTIO, time, "s");
+    std::cout << "Stat: " << stat << std::endl;
 
     // Size of mesh, ignoring boundary cells
     int jSize = this->jUpper - this->nghosts;
@@ -290,12 +294,12 @@ void Mesh2D::dumpToTIO(double time, int step) {
 
     // Create the mesh
     TIO_Object_t meshID;
-    TIO_Create_Mesh( 
+    stat = TIO_Create_Mesh( 
         fileID,
         stateID,
         "mesh",
         &meshID,
-        TIO_MESH_QUAD,
+        TIO_MESH_QUAD_COLINEAR,
         TIO_COORD_CARTESIAN,
         TIO_FALSE,
         "",
@@ -315,6 +319,7 @@ void Mesh2D::dumpToTIO(double time, int step) {
         "Y",
         "" 
     );
+    std::cout << "Stat: " << stat << std::endl;
 
     // Create node centred Coordinates
     int nodeDims[2] = {iSize + 1, jSize + 1};
@@ -329,8 +334,24 @@ void Mesh2D::dumpToTIO(double time, int step) {
         y[j] = (j)*this->dy;
     }
 
+    // Set the chunk...
+    TIO_Set_Quad_Chunk(
+        fileID,
+        meshID,
+        0,
+        TIO_2D,
+        0,
+        iSize,
+        0,
+        jSize,
+        0,
+        0,
+        0,
+        0 
+    );
+
     // Write the mesh
-    TIO_Write_QuadMesh_All( 
+    stat = TIO_Write_QuadMesh_All( 
         fileID,
         meshID,
         TIO_DOUBLE,
@@ -338,6 +359,7 @@ void Mesh2D::dumpToTIO(double time, int step) {
         y,
         NULL 
     );
+    std::cout << "Stat: " << stat << std::endl;
 
     // We need a material, so just create an array of ones...
     int *mat = new int[iSize*jSize];
@@ -363,7 +385,7 @@ void Mesh2D::dumpToTIO(double time, int step) {
     TIO_Write_QuadMaterial_Chunk( 
         fileID,
         materialID,
-        1,
+        0,
         TIO_XFER_NULL,
         TIO_INT,
         mat,
@@ -407,7 +429,7 @@ void Mesh2D::dumpToTIO(double time, int step) {
     TIO_Write_QuadQuant_Chunk(
         fileID,
         quantID,
-        1,
+        0,
         TIO_XFER_NULL,
         TIO_DOUBLE,
         data,
@@ -445,7 +467,7 @@ void Mesh2D::dumpToTIO(double time, int step) {
     TIO_Write_QuadQuant_Chunk(
         fileID,
         quantID,
-        1,
+        0,
         TIO_XFER_NULL,
         TIO_DOUBLE,
         data,
@@ -483,7 +505,7 @@ void Mesh2D::dumpToTIO(double time, int step) {
     TIO_Write_QuadQuant_Chunk(
         fileID,
         quantID,
-        1,
+        0,
         TIO_XFER_NULL,
         TIO_DOUBLE,
         data,
@@ -525,7 +547,7 @@ void Mesh2D::dumpToTIO(double time, int step) {
     TIO_Write_QuadQuant_Chunk(
         fileID,
         quantID,
-        1,
+        0,
         TIO_XFER_NULL,
         TIO_DOUBLE,
         data,

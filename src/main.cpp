@@ -41,7 +41,9 @@ void evolve(double *rhoIn, double *momUIn, double *momVIn, double *EIn,
 
 
 int main(int argc, char* argv[]) {
-//     feenableexcept(FE_INVALID | FE_OVERFLOW);
+#ifdef DEBUG
+    feenableexcept(FE_INVALID | FE_OVERFLOW);
+#endif
 
     // Mesh sizes - hardcoded for now
     const int ni = 600;
@@ -59,7 +61,7 @@ int main(int argc, char* argv[]) {
     nprocs = 1;
     myrank = 0;
 
-    // 100x100 mesh using spherical Sod set-up
+    // 100x100 mesh using bubbles set-up
     Mesh2D mesh(ni, nj, problem);
 
     if (myrank == 0) {
