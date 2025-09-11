@@ -65,8 +65,12 @@ int main(int argc, char* argv[]) {
     Mesh2D mesh(ni, nj, problem);
 
     if (myrank == 0) {
+#ifdef HasTIO
         mesh.dumpToSILO(0.0, 0);
+#endif
+#ifdef HasSILO
         mesh.dumpToTIO(0.0, 0);
+#endif
     }
 
     double t = 0.0;
@@ -126,8 +130,12 @@ int main(int argc, char* argv[]) {
         if (t >= outNext) {
             outNext += dtOut;
             if (myrank == 0) {
-                mesh.dumpToSILO(t, step);
+#ifdef HasTIO
                 mesh.dumpToTIO(t, step);
+#endif
+#ifdef HasSILO
+                mesh.dumpToSILO(t, step);
+#endif
             }
         }
         if (t > tEnd || step > 100000) break;

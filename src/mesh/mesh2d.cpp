@@ -249,6 +249,7 @@ void Mesh2D::setBoundaries() {
 
 }
 
+#ifdef HasTIO
 void Mesh2D::dumpToTIO(double time, int step) {
     char stateNo[4];
     this->dumpStateNoTIO++;
@@ -571,7 +572,9 @@ void Mesh2D::dumpToTIO(double time, int step) {
 
     TIO_Close(fileID);
 }
+#endif
 
+#ifdef HasSILO
 void Mesh2D::dumpToSILO(double time, int step) {
     char stateNo[4];
     this->dumpStateNoSILO++;
@@ -668,7 +671,7 @@ void Mesh2D::dumpToSILO(double time, int step) {
     delete[] data;
     delete[] data2;
 }
-
+#endif
 
 void Mesh2D::Kill() {
     delete[] x;

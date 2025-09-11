@@ -40,8 +40,12 @@ public:
 
     void Kill();
     void setBoundaries();
+#ifdef HasSILO
     void dumpToSILO(double, int);
+#endif
+#ifdef HasTIO
     void dumpToTIO(double, int);
+#endif
 
     void sweepX(double dt,
                 void(*flux)(double*, double*, double*, double*, int, int, double, double, double)
