@@ -47,15 +47,15 @@ public:
     void dumpToTIO(double, int);
 #endif
 
-    void sweepX(double dt,
-                void(*flux)(double*, double*, double*, double*, int, int, double, double, double)
-    );
+    // void sweepX(double dt,
+    //             void(*flux)(double*, double*, double*, double*, int, int, double, double, double)
+    // );
 
-    void sweepY(double dt,
-                void(*flux)(double*, double*, double*, double*, int, int, double, double, double)
-    );
+    // void sweepY(double dt,
+    //             void(*flux)(double*, double*, double*, double*, int, int, double, double, double)
+    // );
 
-    void sweep(double dt);
+    // void sweep(double dt);
 
 //     double* &getMomentum(Sweep, Direction);
 };

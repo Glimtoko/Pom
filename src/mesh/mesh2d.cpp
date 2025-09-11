@@ -4,8 +4,13 @@
 //#include "ncDim.h"
 //#include "ncVar.h"
 
+#ifdef HasSILO
 #include "silo.h"
+#endif
+
+#ifdef HasTIO
 #include "typhonio.h"
+#endif
 
 #include <math.h>
 #include <string.h>

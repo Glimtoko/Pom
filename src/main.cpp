@@ -2,6 +2,8 @@
 #include "hydro/hydro.hpp"
 
 #include <iostream>
+#include <vector>
+
 #include <omp.h>
 
 #include <fenv.h>
@@ -40,7 +42,7 @@ void evolve(double *rhoIn, double *momUIn, double *momVIn, double *EIn,
 }
 
 
-int main(int argc, char* argv[]) {
+int main() {
 #ifdef DEBUG
     feenableexcept(FE_INVALID | FE_OVERFLOW);
 #endif
@@ -51,7 +53,8 @@ int main(int argc, char* argv[]) {
     const int problem = 4;
 
     const double dtOut = 2.0;
-    const double tEnd = 80.0;
+    const double tEnd = 20.0;
+    int maxSteps = 100000;  // Set to a big number
 
 
     const int nCells = ni*nj;
@@ -60,6 +63,16 @@ int main(int argc, char* argv[]) {
     int nprocs, myrank, error;
     nprocs = 1;
     myrank = 0;
+
+    // OpenMP
+    #pragma omp parallel
+    if (omp_get_thread_num() == 0) printf("This is POM running on %d threads\n", omp_get_num_threads());
+
+    printf("Mesh size: %dx%d = %d\n", ni, nj, ni*nj);
+
+    double tStart = omp_get_wtime();
+    double tNow;
+    double tLast = tStart;
 
     // 100x100 mesh using bubbles set-up
     Mesh2D mesh(ni, nj, problem);
@@ -103,12 +116,6 @@ int main(int argc, char* argv[]) {
 
         dt = std::min(dt, outNext - t);
 
-        if (myrank == 0) {
-            std::cout << "Step: " << step;
-            std::cout << ", time = " << t;
-            std::cout << ", dt = " << dt << std::endl;
-        }
-
         // Evolve the solution to next time step
         evolve(
             mesh.rho, mesh.momU, mesh.momV, mesh.E,
@@ -126,6 +133,15 @@ int main(int argc, char* argv[]) {
 
         mesh.setBoundaries();
 
+        tNow = omp_get_wtime();
+        if (myrank == 0) {
+            printf(
+                "Step %6d, time = %f, dt = %f, grind = %f (per-step = %e)\n",
+                step, t, dt, tNow - tLast, (tNow-tLast)/(ni*nj)
+            );
+        }
+        tLast = tNow;
+
         t += dt;
         if (t >= outNext) {
             outNext += dtOut;
@@ -138,10 +154,12 @@ int main(int argc, char* argv[]) {
 #endif
             }
         }
-        if (t > tEnd || step > 100000) break;
+        if (t > tEnd || step >= maxSteps) break;
     }
 
     mesh.Kill();
+    tNow = omp_get_wtime();
+    std::cout << "Calculation completed in " << tNow - tStart << "s" << std::endl;
 
     return 0;
 }
