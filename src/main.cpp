@@ -8,8 +8,8 @@
 
 #include <fenv.h>
 
-void copy(double *rhoOut, double *momUOut, double *momVOut, double *EOut,
-          double *rhoIn, double *momUIn, double *momVIn, double *EIn,
+void copy(std::vector<double> rhoOut, std::vector<double> momUOut, std::vector<double> momVOut, std::vector<double> EOut,
+          std::vector<double> rhoIn, std::vector<double> momUIn, std::vector<double> momVIn, std::vector<double> EIn,
           int nCells)
 {
     #pragma omp parallel for
@@ -22,8 +22,8 @@ void copy(double *rhoOut, double *momUOut, double *momVOut, double *EOut,
 }
 
 
-void evolve(double *rhoIn, double *momUIn, double *momVIn, double *EIn,
-          double *rhoOut, double *momUOut, double *momVOut, double *EOut,
+void evolve(std::vector<double> rhoIn, std::vector<double> momUIn, std::vector<double> momVIn, std::vector<double> EIn,
+          std::vector<double> rhoOut, std::vector<double> momUOut, std::vector<double> momVOut, std::vector<double> EOut,
           double dt, double dx, double dy, double gamma,
           int nCells, int niGhosts, int ni)
 {
@@ -76,6 +76,7 @@ int main() {
 
     // 100x100 mesh using bubbles set-up
     Mesh2D mesh(ni, nj, problem);
+    printf("Setup Complete");
 
     if (myrank == 0) {
 #ifdef HasTIO
@@ -90,10 +91,20 @@ int main() {
     double outNext = t + dtOut;
     int step = 0;
 
-    double *rhoNew = new double[mesh.niGhosts*mesh.njGhosts];
-    double *momUNew = new double[mesh.niGhosts*mesh.njGhosts];
-    double *momVNew = new double[mesh.niGhosts*mesh.njGhosts];
-    double *ENew = new double[mesh.niGhosts*mesh.njGhosts];
+    std::vector<double> rhoNew;
+    std::vector<double> momUNew;
+    std::vector<double> momVNew;
+    std::vector<double> ENew;
+
+    rhoNew.reserve(mesh.niGhosts*mesh.njGhosts);
+    momUNew.reserve(mesh.niGhosts*mesh.njGhosts);
+    momVNew.reserve(mesh.niGhosts*mesh.njGhosts);
+    ENew.reserve(mesh.niGhosts*mesh.njGhosts);
+
+    // std::vector<double> rhoNew = new double[mesh.niGhosts*mesh.njGhosts];
+    // std::vector<double> momUNew = new double[mesh.niGhosts*mesh.njGhosts];
+    // std::vector<double> momVNew = new double[mesh.niGhosts*mesh.njGhosts];
+    // std::vector<double> ENew = new double[mesh.niGhosts*mesh.njGhosts];
 
     for (int i=0; i<mesh.njGhosts*mesh.niGhosts; i++) {
         rhoNew[i] = 0.0001;

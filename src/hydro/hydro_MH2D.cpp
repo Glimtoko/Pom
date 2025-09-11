@@ -2,10 +2,11 @@
 
 #include <math.h>
 #include <iostream>
+#include <vector>
 
 double getLimiter(double di1, double di2, double omega);
-double getSlopeX(double* U, int i, int j, int niGhosts, double omega);
-double getSlopeY(double* U, int i, int j, int niGhosts, double omega);
+double getSlopeX(std::vector<double> U, int i, int j, int niGhosts, double omega);
+double getSlopeY(std::vector<double> U, int i, int j, int niGhosts, double omega);
 
 double calcFluxRho(double rho, double u);
 double calcFluxMom(double rho, double u, double v, double p);
@@ -14,10 +15,10 @@ double calcFluxE(double u, double E, double p);
 #define GET(D, I, J) D[(J)*niGhosts + I]
 
 void Hydro::MUSCLHancock2D(
-    double* rhoOld, double* EOld, double* momUOld, double* momVOld,
+    std::vector<double> rhoOld, std::vector<double> EOld, std::vector<double> momUOld, std::vector<double> momVOld,
     int iIndex, int jIndex, int kIndex, int niGhosts,
     double gamma, double dt, double dx, double dy,
-    double* rhoNew, double* ENew, double* momUNew, double* momVNew
+    std::vector<double> rhoNew, std::vector<double> ENew, std::vector<double> momUNew, std::vector<double> momVNew
 ) {
 
     double omega = 0.0;
@@ -266,7 +267,7 @@ void Hydro::MUSCLHancock2D(
 
 }
 
-double getSlopeX(double* U, int i, int j, int niGhosts, double omega) {
+double getSlopeX(std::vector<double> U, int i, int j, int niGhosts, double omega) {
     double di1 = GET(U, i, j) - GET(U, i-1, j);
     double di2 = GET(U, i+1, j) - GET(U, i, j);
 
@@ -277,7 +278,7 @@ double getSlopeX(double* U, int i, int j, int niGhosts, double omega) {
     return diU;
 }
 
-double getSlopeY(double* U, int i, int j, int niGhosts, double omega) {
+double getSlopeY(std::vector<double> U, int i, int j, int niGhosts, double omega) {
     double di1 = GET(U, i, j) - GET(U, i, j-1);
     double di2 = GET(U, i, j+1) - GET(U, i, j);
 

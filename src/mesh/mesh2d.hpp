@@ -24,17 +24,17 @@ public:
     double dx, dy;
     double cfl;
 
-    double* meshBoundaryUD;
-    double* meshBoundaryLR;
+    std::vector<double> meshBoundaryUD;
+    std::vector<double> meshBoundaryLR;
 
     std::vector<double> x, y;
-    // double* x;
-    // double* y;
+    // std::vector<double> x;
+    // std::vector<double> y;
 
-    double* rho;
-    double* momU;
-    double* momV;
-    double* E;
+    std::vector<double> rho;
+    std::vector<double> momU;
+    std::vector<double> momV;
+    std::vector<double> E;
 
     // Constructor to just produce a Sod mesh
     Mesh2D(int, int, int);

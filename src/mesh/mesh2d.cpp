@@ -55,10 +55,10 @@ Mesh2D::Mesh2D(int ni, int nj, int xy) {
     }
 
     // Set physical arrays
-    rho = new double[njGhosts*niGhosts];
-    momU = new double[njGhosts*niGhosts];
-    momV = new double[njGhosts*niGhosts];
-    E = new double[njGhosts*niGhosts];
+    rho.reserve(njGhosts*niGhosts);
+    momU.reserve(njGhosts*niGhosts);
+    momV.reserve(njGhosts*niGhosts);
+    E.reserve(njGhosts*niGhosts);
 
     for (int i=0; i<njGhosts*niGhosts; i++) {
         rho[i] = 0.0001;
@@ -188,8 +188,8 @@ Mesh2D::Mesh2D(int ni, int nj, int xy) {
     }
 
     // Set boundary factor arrays
-    meshBoundaryLR = new double[2];
-    meshBoundaryUD = new double[2];
+    meshBoundaryLR.reserve(2);
+    meshBoundaryUD.reserve(2);
 
     // Initialise all boundaries to be transmissive
     meshBoundaryLR[0] = bL;
@@ -325,8 +325,8 @@ void Mesh2D::dumpToTIO(double time, int step) {
 
     // Create node centred Coordinates
     int nodeDims[2] = {iSize + 1, jSize + 1};
-    double *x = new double[nodeDims[0]];
-    double *y = new double[nodeDims[1]];
+    std::vector<double> x = new double[nodeDims[0]];
+    std::vector<double> y = new double[nodeDims[1]];
 
     for (int i=0; i<nodeDims[0]; i++) {
         x[i] = (i)*this->dx;
@@ -404,7 +404,7 @@ void Mesh2D::dumpToTIO(double time, int step) {
     TIO_Object_t quantID;
 
     // Set quant storage
-    double *data = new double[iSize*jSize];
+    std::vector<double> data = new double[iSize*jSize];
 
     // Create a quant for Density
     TIO_Create_Quant( 
@@ -598,10 +598,10 @@ void Mesh2D::dumpToSILO(double time, int step) {
 
     // Create node centred Coordinates
     int nodeDims[2] = {iSize + 1, jSize + 1};
-    double *x = new double[nodeDims[0]];
-    double *y = new double[nodeDims[1]];
+    std::vector<double> x = new double[nodeDims[0]];
+    std::vector<double> y = new double[nodeDims[1]];
 
-    double *coordinates[2];
+    std::vector<double> coordinates[2];
     char *coordnames[2];
 
     for (int i=0; i<nodeDims[0]; i++) {
@@ -627,8 +627,8 @@ void Mesh2D::dumpToSILO(double time, int step) {
 
     // Set quant storage
     int cellDims[2] = {iSize, jSize};
-    double *data = new double[cellDims[0]*cellDims[1]];
-    double *data2 = new double[cellDims[0]*cellDims[1]];
+    std::vector<double> data = new double[cellDims[0]*cellDims[1]];
+    std::vector<double> data2 = new double[cellDims[0]*cellDims[1]];
 
 
     // Write density
@@ -675,8 +675,8 @@ void Mesh2D::dumpToSILO(double time, int step) {
 #endif
 
 void Mesh2D::Kill() {
-    delete[] rho;
-    delete[] momU;
-    delete[] momV;
-    delete[] E;
+    // delete[] rho;
+    // delete[] momU;
+    // delete[] momV;
+    // delete[] E;
 }

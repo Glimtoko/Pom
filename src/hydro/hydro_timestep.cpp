@@ -3,7 +3,7 @@
 #include <iostream>
 
 double Hydro::getTimestep(
-    double *rho, double *momU, double *momV, double *E,
+    std::vector<double> rho, std::vector<double> momU, std::vector<double> momV, std::vector<double> E,
     double dx, double dy,
     int nCells,
     double gamma, double cfl, double dtmax
