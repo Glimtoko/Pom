@@ -1,9 +1,5 @@
 #include <valarray>
 
-//#include "ncFile.h"
-//#include "ncDim.h"
-//#include "ncVar.h"
-
 #ifdef HasSILO
 #include "silo.h"
 #endif
@@ -43,7 +39,7 @@ Mesh2D::Mesh2D(int ni, int nj, int xy) {
     // be 1D arrays, as, for example, all cells with the same j-index will have
     // the same y position.
     dx = xLength/ni;
-    x = new double[niGhosts];
+    x.reserve(niGhosts);
 
     // Ghost/boundary cells mean that the first "data" cell is at index 2.
     // Coordinates are for cell centres, so start at dx/2, not 0
@@ -53,7 +49,7 @@ Mesh2D::Mesh2D(int ni, int nj, int xy) {
 
     // Same for y
     dy = yLength/nj;
-    y = new double[njGhosts];
+    y.reserve(njGhosts);
     for (int j=0; j<njGhosts; j++) {
         y[j] = (0.5 + j - 2)*dy;
     }
@@ -679,9 +675,6 @@ void Mesh2D::dumpToSILO(double time, int step) {
 #endif
 
 void Mesh2D::Kill() {
-    delete[] x;
-    delete[] y;
-
     delete[] rho;
     delete[] momU;
     delete[] momV;

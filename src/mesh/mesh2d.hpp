@@ -27,8 +27,9 @@ public:
     double* meshBoundaryUD;
     double* meshBoundaryLR;
 
-    double* x;
-    double* y;
+    std::vector<double> x, y;
+    // double* x;
+    // double* y;
 
     double* rho;
     double* momU;
@@ -40,23 +41,12 @@ public:
 
     void Kill();
     void setBoundaries();
+
 #ifdef HasSILO
     void dumpToSILO(double, int);
 #endif
 #ifdef HasTIO
     void dumpToTIO(double, int);
 #endif
-
-    // void sweepX(double dt,
-    //             void(*flux)(double*, double*, double*, double*, int, int, double, double, double)
-    // );
-
-    // void sweepY(double dt,
-    //             void(*flux)(double*, double*, double*, double*, int, int, double, double, double)
-    // );
-
-    // void sweep(double dt);
-
-//     double* &getMomentum(Sweep, Direction);
 };
 #endif
