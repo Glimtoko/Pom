@@ -8,8 +8,8 @@
 
 #include <fenv.h>
 
-void copy(std::vector<double> rhoOut, std::vector<double> momUOut, std::vector<double> momVOut, std::vector<double> EOut,
-          std::vector<double> rhoIn, std::vector<double> momUIn, std::vector<double> momVIn, std::vector<double> EIn,
+void copy(std::vector<double>& rhoOut, std::vector<double>& momUOut, std::vector<double>& momVOut, std::vector<double>& EOut,
+          std::vector<double>& rhoIn, std::vector<double>& momUIn, std::vector<double>& momVIn, std::vector<double>& EIn,
           int nCells)
 {
     #pragma omp parallel for
@@ -22,8 +22,8 @@ void copy(std::vector<double> rhoOut, std::vector<double> momUOut, std::vector<d
 }
 
 
-void evolve(std::vector<double> rhoIn, std::vector<double> momUIn, std::vector<double> momVIn, std::vector<double> EIn,
-          std::vector<double> rhoOut, std::vector<double> momUOut, std::vector<double> momVOut, std::vector<double> EOut,
+void evolve(std::vector<double>& rhoIn, std::vector<double>& momUIn, std::vector<double>& momVIn, std::vector<double>& EIn,
+          std::vector<double>& rhoOut, std::vector<double>& momUOut, std::vector<double>& momVOut, std::vector<double>& EOut,
           double dt, double dx, double dy, double gamma,
           int nCells, int niGhosts, int ni)
 {
