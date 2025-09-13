@@ -7,8 +7,8 @@ project(
 )
 
 # find_package(OpenMP REQUIRED)
-add_compile_options(-fopenmp)
-add_link_options(-fopenmp)
+add_compile_options(-fopenmp -O3)
+add_link_options(-fopenmp -O3)
 
 # Source code
 add_subdirectory(src)
